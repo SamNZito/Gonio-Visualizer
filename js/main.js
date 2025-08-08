@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const rewindButton = document.getElementById('rewindButton');
     const forwardButton = document.getElementById('forwardButton');
     const musicButton = document.getElementById('musicButton');
-    // Remove reference to favorite button
     const currentTrack = document.getElementById('currentTrack');
     const volumeSlider = document.getElementById('volumeSlider');
     const timelineSlider = document.getElementById('timelineSlider');
@@ -186,11 +185,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // Particle mode button
-    const particleModeButton = document.getElementById('particleModeButton');
-    particleModeButton.addEventListener('click', () => {
-        visualizer.particleMode = !visualizer.particleMode;
-        particleModeButton.classList.toggle('active', visualizer.particleMode);
+    // Visual mode toggle button (replacing particle mode button)
+    // Visual mode toggle button
+    const visualModeButton = document.getElementById('visualModeButton');
+    visualModeButton.addEventListener('click', () => {
+        // Toggle between dots and line mode
+        if (visualizer.visualMode === 'dots') {
+            visualizer.visualMode = 'line';
+            visualModeButton.classList.add('active');
+            
+            // Update icon for line mode
+            const icon = visualModeButton.querySelector('i');
+            icon.className = 'fas fa-wave-square'; // Continuous line icon
+        } 
+        else {
+            visualizer.visualMode = 'dots';
+            visualModeButton.classList.remove('active');
+            
+            // Update icon for dots mode
+            const icon = visualModeButton.querySelector('i');
+            icon.className = 'fas fa-braille'; // Dots-only mode icon
+        }
+        
+        console.log(`Visualization Mode: ${visualizer.visualMode}`);
     });
     
     // Fullscreen button
