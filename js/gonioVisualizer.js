@@ -6,18 +6,17 @@ class GonioVisualizer {
         this.setupResizeListener();
         
         // Visualization settings
-        this.persistence = 0.5; // Increased persistence for longer trails
+        this.persistence = 0.8; // Increased persistence for longer trails
         this.pointSize = 2; // Size of dots
         this.centerX = this.canvas.width / 2;
         this.centerY = this.canvas.height / 2;
         this.scale = Math.min(this.canvas.width, this.canvas.height) * 0.4;
-        this.normalizationFactor = 1.0;
+        this.normalizationFactor = 1;
         this.dotColor = 'rgb(0, 255, 0)'; // Default green color
         this.colorMode = 'static'; // Options: 'static', 'gradient', 'spectrum'
         this.colorHue = 120; // Green hue
-        this.particles = [];
-        this.maxParticles = 100;
-        this.particleMode = false;
+        this.lineMode = false; // Start with dots only
+        this.visualMode = 'dots'; // Options: 'dots', 'line'
         
         // Initialize the canvas
         this.clear();
@@ -72,20 +71,22 @@ class GonioVisualizer {
         const targetNormalization = maxAmplitude > 0.01 ? 0.7 / maxAmplitude : 1.0;
         this.normalizationFactor = this.normalizationFactor * 0.95 + targetNormalization * 0.05;
         
-        // Draw dots instead of lines
-        this.drawDots(leftData, rightData);
-        
-        // Update and draw particles if enabled
-        if (this.particleMode) {
-            this.updateParticles();
-        }
+        // Draw visualization
+        this.drawVisualization(leftData, rightData);
     }
     
-    drawDots(leftData, rightData) {
+    drawVisualization(leftData, rightData) {
         const len = Math.min(leftData.length, rightData.length);
         
-        // Skip factor for fewer dots
-        const skipFactor = 1;
+        // Dynamic skip factor based on visualization mode
+        // Lower skip factor for dots mode = more dots
+        // Higher skip factor for line mode for better performance
+        let skipFactor = 1;
+        if (this.visualMode === 'line') {
+            skipFactor = 5; // Smoother line with more points
+        } else {
+            skipFactor = 1; // More dots in dot mode
+        }
         
         // Color handling based on mode
         if (this.colorMode === 'gradient') {
@@ -98,8 +99,15 @@ class GonioVisualizer {
         
         // Set base dot style
         this.ctx.fillStyle = this.dotColor;
+        this.ctx.strokeStyle = this.dotColor;
         
-        // Draw main diagonal dots
+        // Thinner lines for clearer visualization
+        this.ctx.lineWidth = 2;
+        
+        // Store points for line drawing
+        const points = [];
+        
+        // Calculate points for goniometer
         for (let i = 0; i < len; i += skipFactor) {
             const left = leftData[i] * this.normalizationFactor;
             const right = rightData[i] * this.normalizationFactor;
@@ -107,6 +115,8 @@ class GonioVisualizer {
             // Calculate X-Y coordinates for goniometer
             const x = this.centerX + (left - right) * this.scale;
             const y = this.centerY - (left + right) * this.scale;
+            
+            points.push({ x, y });
             
             // For spectrum mode, color based on position
             if (this.colorMode === 'spectrum') {
@@ -119,63 +129,29 @@ class GonioVisualizer {
                 // Map distance to hue (0-360)
                 const hue = (distance * 360) % 360;
                 this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                this.ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
             }
             
-            // Draw the dot
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, this.pointSize, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-        
-        // Occasionally spawn particles from dots
-        if (this.particleMode && Math.random() > 0.9) {
-            const left = leftData[0] * this.normalizationFactor;
-            const right = rightData[0] * this.normalizationFactor;
-            
-            const x = this.centerX + (left - right) * this.scale;
-            const y = this.centerY - (left + right) * this.scale;
-            
-            this.addParticle(x, y);
-        }
-    }
-    
-    addParticle(x, y) {
-        if (this.particles.length >= this.maxParticles) return;
-        
-        this.particles.push({
-            x: x,
-            y: y,
-            size: this.pointSize * 1.5,
-            speed: 0.5 + Math.random(),
-            angle: Math.random() * Math.PI * 2,
-            life: 100,
-            color: this.dotColor
-        });
-    }
-    
-    updateParticles() {
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            
-            // Move particle
-            p.x += Math.cos(p.angle) * p.speed;
-            p.y += Math.sin(p.angle) * p.speed;
-            
-            // Reduce life
-            p.life -= 1;
-            
-            // Draw particle
-            this.ctx.globalAlpha = p.life / 100;
-            this.ctx.fillStyle = p.color;
-            this.ctx.beginPath();
-            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            this.ctx.fill();
-            this.ctx.globalAlpha = 1;
-            
-            // Remove dead particles
-            if (p.life <= 0) {
-                this.particles.splice(i, 1);
+            // Always draw dots in dot mode
+            if (this.visualMode === 'dots') {
+                const dotSize = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                this.ctx.fill();
             }
+        }
+        
+        // Draw visualization based on selected mode
+        if (points.length > 1 && this.visualMode === 'line') {
+            // Continuous line mode - single unbroken line
+            this.ctx.beginPath();
+            this.ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length; i++) {
+                this.ctx.lineTo(points[i].x, points[i].y);
+            }
+            
+            this.ctx.stroke();
         }
     }
 }
